@@ -2,8 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use mdforge::forge::DomRenderer;
 use mdforge::{
-    ArgType, BlockNode, Diagnostic, ErrorCode, EvalContext, Forge, InlineExt, VElement,
-    VNode,
+    ArgType, BlockNode, Diagnostic, ErrorCode, EvalContext, Forge, InlineExt, VElement, VNode,
 };
 
 struct IntegrationRenderer;
