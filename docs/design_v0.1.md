@@ -221,9 +221,18 @@ Inline: badge
 {badge level=<int>}
 ```
 
+## 11. 実装ガイドライン（AI / 開発者向け）
+
+LLM / AGENT がコードを生成・編集する際は、以下を推奨する。
+
+- 1 ファイルが過大化しないよう、責務ごとに適切な粒度で分割する。
+- 分割時は同一レイヤへフラットに並べるだけの構成を避け、最低限の階層設計（同一階層の分割は 1 段階までを目安）を行う。
+- 同じ振る舞いが複数箇所で現れる場合は、重複実装を増やさずインタフェース（trait / 抽象）を切り出して再利用性を確保する。
+- 可読性を優先し、`cargo fmt` と `cargo clippy` を適宜実行して、命名・構造・警告の品質を維持する。
+
 Spec と常に一致する。
 
-## 11. DynamicEnum 評価
+## 12. DynamicEnum 評価
 
 ```rust
 pub struct EvalContext {
@@ -236,7 +245,7 @@ eval 段階で:
 - DynamicEnum 値の存在チェック
 - エラー時に候補一覧提示
 
-## 12. 公開 API
+## 13. 公開 API
 
 ```rust
 let forge = Forge::builder()
@@ -255,7 +264,7 @@ let ctx = forge.eval(&doc, &dynamic_ctx)?;
 let dom = forge.render_dom(&doc, &ctx, &renderer)?;
 ```
 
-## 13. 将来拡張
+## 14. 将来拡張
 
 - typed_block
 - inline container 形式
@@ -264,7 +273,7 @@ let dom = forge.render_dom(&doc, &ctx, &renderer)?;
 - React 用 VNode 出力
 - WebAssembly 対応
 
-## 14. 成功基準
+## 15. 成功基準
 
 mdforge は:
 
