@@ -1,11 +1,24 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{ast::ArgSpec, BlockNode, Diagnostic, Document, InlineExt, VNode};
+use crate::{ast::ArgSpec, Diagnostic, Document, VNode};
+
+mod args;
+mod eval;
+mod inline;
+mod parse;
+mod render;
+mod signature;
+mod validate;
 
 pub trait DomRenderer {
-    fn render_block(&self, block: &BlockNode, ctx: &EvalContext, children: Vec<VNode>) -> VNode;
+    fn render_block(
+        &self,
+        block: &crate::BlockNode,
+        ctx: &EvalContext,
+        children: Vec<VNode>,
+    ) -> VNode;
 
-    fn render_inline(&self, inline: &InlineExt, ctx: &EvalContext) -> VNode;
+    fn render_inline(&self, inline: &crate::InlineExt, ctx: &EvalContext) -> VNode;
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -38,80 +51,32 @@ impl Forge {
     }
 
     pub fn signature(&self) -> String {
-        let mut lines = Vec::new();
-
-        for block in &self.blocks {
-            lines.push(format!("Block: {}", block.name));
-            let args = block
-                .args
-                .iter()
-                .map(|(name, spec)| {
-                    format!("{}={}", name, spec.arg_type.signature_label(spec.required))
-                })
-                .collect::<Vec<_>>()
-                .join(" ");
-
-            let head = if args.is_empty() {
-                format!(":::{}", block.name)
-            } else {
-                format!(":::{} {}", block.name, args)
-            };
-            lines.push(head);
-            if block.body_markdown {
-                lines.push("Body: markdown".to_string());
-            }
-            lines.push(String::new());
-        }
-
-        for inline in &self.inlines {
-            lines.push(format!("Inline: {}", inline.name));
-            let args = inline
-                .args
-                .iter()
-                .map(|(name, spec)| {
-                    format!("{}={}", name, spec.arg_type.signature_label(spec.required))
-                })
-                .collect::<Vec<_>>()
-                .join(" ");
-            let body = if args.is_empty() {
-                format!("{{{}}}", inline.name)
-            } else {
-                format!("{{{} {}}}", inline.name, args)
-            };
-            lines.push(body);
-            lines.push(String::new());
-        }
-
-        while matches!(lines.last(), Some(last) if last.is_empty()) {
-            lines.pop();
-        }
-
-        lines.join("\n")
+        signature::build_signature(&self.blocks, &self.inlines)
     }
 
-    pub fn parse(&self, _input: &str) -> Result<Document, Vec<Diagnostic>> {
-        Ok(Document { nodes: Vec::new() })
+    pub fn parse(&self, input: &str) -> Result<Document, Vec<Diagnostic>> {
+        parse::parse_document(input)
     }
 
-    pub fn validate(&self, _doc: &Document) -> Result<(), Vec<Diagnostic>> {
-        Ok(())
+    pub fn validate(&self, doc: &Document) -> Result<(), Vec<Diagnostic>> {
+        validate::validate_document(doc, &self.blocks, &self.inlines)
     }
 
     pub fn eval(
         &self,
-        _doc: &Document,
+        doc: &Document,
         dynamic_ctx: &EvalContext,
     ) -> Result<EvalContext, Vec<Diagnostic>> {
-        Ok(dynamic_ctx.clone())
+        eval::eval_document(doc, &self.blocks, &self.inlines, dynamic_ctx)
     }
 
     pub fn render_dom(
         &self,
-        _doc: &Document,
-        _ctx: &EvalContext,
-        _renderer: &dyn DomRenderer,
+        doc: &Document,
+        ctx: &EvalContext,
+        renderer: &dyn DomRenderer,
     ) -> Result<Vec<VNode>, Vec<Diagnostic>> {
-        Ok(Vec::new())
+        render::render_document(doc, &self.blocks, &self.inlines, ctx, renderer)
     }
 }
 
@@ -201,34 +166,4 @@ impl InlineBuilder {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::ArgType;
-
-    use super::Forge;
-
-    #[test]
-    fn signature_matches_expected_shape() {
-        let forge = Forge::builder()
-            .block("card")
-            .arg("title", ArgType::String.required())
-            .arg("level", ArgType::Int.optional())
-            .body_markdown()
-            .register()
-            .inline("badge")
-            .arg("level", ArgType::Int.required())
-            .register()
-            .build();
-
-        let expected = [
-            "Block: card",
-            ":::card title=<string> level=<int?>",
-            "Body: markdown",
-            "",
-            "Inline: badge",
-            "{badge level=<int>}",
-        ]
-        .join("\n");
-
-        assert_eq!(forge.signature(), expected);
-    }
-}
+mod tests;
